@@ -28,4 +28,17 @@ export class WhatsappController {
     this.logger.log('Logout request received');
     return this.whatsappService.logout();
   }
+
+  @Get('config/webhook')
+  async getWebhookUrl() {
+    return this.whatsappService.getWebhookUrl();
+  }
+
+  @Post('config/webhook')
+  async setWebhookUrl(@Body() body: { url: string }) {
+    if (!body.url) {
+        throw new BadRequestException('URL is required');
+    }
+    return this.whatsappService.setWebhookUrl(body.url);
+  }
 }

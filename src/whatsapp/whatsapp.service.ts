@@ -7,8 +7,11 @@ import axios from 'axios';
 export class WhatsappService implements OnModuleInit {
   private client: Client;
   private readonly logger = new Logger(WhatsappService.name);
+  private webhookUrl: string;
 
   onModuleInit() {
+    this.webhookUrl = process.env.WEBHOOK_URL;
+    
     this.client = new Client({
       authStrategy: new LocalAuth(),
       puppeteer: {
@@ -24,12 +27,12 @@ export class WhatsappService implements OnModuleInit {
 
     this.client.on('ready', () => {
       this.logger.log('WhatsApp Client is ready!');
+      this.logger.log(`Current Webhook URL: ${this.webhookUrl || 'Not set'}`);
     });
 
     this.client.on('message', async (message) => {
       this.logger.log(`Received message from ${message.from}: ${message.body}`);
-      const webhookUrl = process.env.WEBHOOK_URL;
-      if (webhookUrl) {
+      if (this.webhookUrl) {
         // Construct Cloud API-like webhook payload
         const payload = {
           object: 'whatsapp_business_account',
@@ -72,10 +75,10 @@ export class WhatsappService implements OnModuleInit {
         };
 
         try {
-          await axios.post(webhookUrl, payload);
-          this.logger.log('Message forwarded to webhook');
+          await axios.post(this.webhookUrl, payload);
+          this.logger.log(`Message forwarded to webhook: ${this.webhookUrl}`);
         } catch (error) {
-          this.logger.error('Failed to forward message to webhook', error);
+          this.logger.error(`Failed to forward message to webhook ${this.webhookUrl}`, error);
         }
       } else {
         this.logger.warn('WEBHOOK_URL not set, message not forwarded');
@@ -87,6 +90,16 @@ export class WhatsappService implements OnModuleInit {
     });
 
     this.client.initialize();
+  }
+
+  getWebhookUrl() {
+    return { webhookUrl: this.webhookUrl };
+  }
+
+  setWebhookUrl(url: string) {
+    this.webhookUrl = url;
+    this.logger.log(`Webhook URL updated to: ${url}`);
+    return { success: true, webhookUrl: this.webhookUrl };
   }
 
   async sendMessage(to: string, message: string) {
