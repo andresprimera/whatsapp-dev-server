@@ -23,6 +23,9 @@ importers:
       axios:
         specifier: ^1.13.4
         version: 1.13.4
+      puppeteer:
+        specifier: ^24.36.1
+        version: 24.36.1(typescript@5.9.3)
       qrcode-terminal:
         specifier: ^0.12.0
         version: 0.12.0
