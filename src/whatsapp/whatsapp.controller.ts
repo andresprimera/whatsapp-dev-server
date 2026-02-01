@@ -1,8 +1,10 @@
-import { Controller, Post, Body, Get, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, Get, BadRequestException, Logger } from '@nestjs/common';
 import { WhatsappService } from './whatsapp.service';
 
 @Controller('whatsapp')
 export class WhatsappController {
+  private readonly logger = new Logger(WhatsappController.name);
+
   constructor(private readonly whatsappService: WhatsappService) {}
 
   @Post('send')
@@ -23,6 +25,7 @@ export class WhatsappController {
 
   @Get('logout')
   async logout() {
+    this.logger.log('Logout request received');
     return this.whatsappService.logout();
   }
 }
