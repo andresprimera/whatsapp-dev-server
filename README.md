@@ -1,73 +1,336 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# WhatsApp Development Server
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A NestJS-based development server that acts as a local WhatsApp interface, mimicking the WhatsApp Cloud API for testing and development purposes. This server allows you to send and receive WhatsApp messages through your personal WhatsApp account without needing access to the official WhatsApp Business API.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## How It Works
 
-## Description
+This server bridges your local WhatsApp Web session with your development environment:
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+1. **Authentication**: On startup, the server initializes a WhatsApp Web client using [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js). You'll need to scan a QR code (displayed in the terminal) with your WhatsApp mobile app to authenticate.
+
+2. **Session Persistence**: Once authenticated, your session is saved locally using `LocalAuth`, so you won't need to scan the QR code on subsequent restarts.
+
+3. **Receiving Messages**: When someone sends you a WhatsApp message, the server:
+   - Captures the incoming message
+   - Formats it to match the WhatsApp Cloud API webhook payload structure
+   - Forwards it to your configured webhook URL (if set)
+
+4. **Sending Messages**: You can send messages through the REST API using a payload format similar to the WhatsApp Cloud API.
 
 ## Installation
 
 ```bash
-$ pnpm install
+pnpm install
 ```
 
-## Running the app
+## Configuration
+
+Set the following environment variables (optional):
 
 ```bash
-# development
-$ pnpm run start
+# Port for the server (default: 3005)
+PORT=3005
 
-# watch mode
-$ pnpm run start:dev
+# Webhook URL to receive incoming messages
+WEBHOOK_URL=http://your-webhook-endpoint.com/webhook
 
-# production mode
-$ pnpm run start:prod
+# Base URL for the server
+BASE_URL=http://localhost:3005
 ```
 
-## Test
+## Running the Server
 
 ```bash
-# unit tests
-$ pnpm run test
+# Development mode with auto-reload
+pnpm run start:dev
 
-# e2e tests
-$ pnpm run test:e2e
+# Production mode
+pnpm run start:prod
 
-# test coverage
-$ pnpm run test:cov
+# Standard start
+pnpm run start
 ```
 
-## Support
+On first run, scan the QR code displayed in the terminal with your WhatsApp mobile app (WhatsApp > Settings > Linked Devices > Link a Device).
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## API Endpoints
 
-## Stay in touch
+### **POST** `/whatsapp/send`
 
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Send a WhatsApp message using Cloud API format.
+
+**Request Body:**
+```json
+{
+  "messaging_product": "whatsapp",
+  "recipient_type": "individual",
+  "to": "1234567890",
+  "type": "text",
+  "text": {
+    "body": "Hello, this is a test message!"
+  }
+}
+```
+
+**Parameters:**
+- `messaging_product`: Must be `"whatsapp"`
+- `recipient_type`: Must be `"individual"`
+- `to`: Phone number (with or without country code, with or without @c.us suffix)
+- `type`: Must be `"text"`
+- `text.body`: The message content
+
+**Response:**
+```json
+{
+  "success": true,
+  "response": { /* WhatsApp message details */ }
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:3005/whatsapp/send \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messaging_product": "whatsapp",
+    "recipient_type": "individual",
+    "to": "1234567890",
+    "type": "text",
+    "text": {
+      "body": "Hello from the dev server!"
+    }
+  }'
+```
+
+---
+
+### **GET** `/whatsapp/config/webhook`
+
+Get the currently configured webhook URL.
+
+**Response:**
+```json
+{
+  "webhookUrl": "http://your-webhook-endpoint.com/webhook"
+}
+```
+
+**Example:**
+```bash
+curl http://localhost:3005/whatsapp/config/webhook
+```
+
+---
+
+### **POST** `/whatsapp/config/webhook`
+
+Set or update the webhook URL for receiving incoming messages.
+
+**Request Body:**
+```json
+{
+  "url": "http://your-webhook-endpoint.com/webhook"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "webhookUrl": "http://your-webhook-endpoint.com/webhook"
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:3005/whatsapp/config/webhook \
+  -H "Content-Type: application/json" \
+  -d '{"url": "http://localhost:4000/webhook"}'
+```
+
+---
+
+### **GET** `/whatsapp/logout`
+
+Logout from the WhatsApp Web session and clear authentication.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Logged out successfully"
+}
+```
+
+**Example:**
+```bash
+curl http://localhost:3005/whatsapp/logout
+```
+
+---
+
+## Cloud API Compatible Endpoint
+
+This endpoint mimics the official WhatsApp Cloud API, allowing you to use this server as a drop-in replacement during development.
+
+### **POST** `/:version/:phoneId/messages`
+
+A Cloud API compatible endpoint for sending messages and marking messages as read. Use this when your application is built to work with the WhatsApp Cloud API.
+
+**Base URL Example:** `http://localhost:3005/v18.0/dev`
+
+---
+
+#### Send a Text Message
+
+**Request Body:**
+```json
+{
+  "messaging_product": "whatsapp",
+  "recipient_type": "individual",
+  "to": "1234567890",
+  "type": "text",
+  "text": {
+    "body": "Hello!"
+  }
+}
+```
+
+**Parameters:**
+- `messaging_product`: Must be `"whatsapp"`
+- `recipient_type`: Must be `"individual"` (optional, defaults to individual)
+- `to`: Phone number
+- `type`: Must be `"text"`
+- `text.body`: The message content
+
+**Response:**
+```json
+{
+  "messaging_product": "whatsapp",
+  "contacts": [{ "input": "1234567890", "wa_id": "1234567890" }],
+  "messages": [{ "id": "wamid.xxxxx" }]
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:3005/v18.0/dev/messages \
+  -H "Authorization: Bearer your_token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messaging_product": "whatsapp",
+    "recipient_type": "individual",
+    "to": "1234567890",
+    "type": "text",
+    "text": { "body": "Hello from Cloud API!" }
+  }'
+```
+
+---
+
+#### Mark Message as Read
+
+**Request Body:**
+```json
+{
+  "messaging_product": "whatsapp",
+  "status": "read",
+  "message_id": "wamid.xxxxx"
+}
+```
+
+**Parameters:**
+- `messaging_product`: Must be `"whatsapp"`
+- `status`: Must be `"read"`
+- `message_id`: The ID of the message to mark as read
+
+**Response:**
+```json
+{
+  "success": true
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:3005/v18.0/dev/messages \
+  -H "Authorization: Bearer your_token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messaging_product": "whatsapp",
+    "status": "read",
+    "message_id": "wamid.xxxxx"
+  }'
+```
+
+---
+
+## Webhook Payload Format
+
+When a message is received, the server forwards it to your configured webhook URL with the following Cloud API-compatible payload:
+
+```json
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "your_phone_number",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "your_phone_number",
+              "phone_number_id": "your_phone_number"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "Contact Name"
+                },
+                "wa_id": "1234567890"
+              }
+            ],
+            "messages": [
+              {
+                "from": "1234567890",
+                "id": "message_id",
+                "timestamp": "1634567890",
+                "text": {
+                  "body": "Message content"
+                },
+                "type": "text"
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Testing
+
+```bash
+# Unit tests
+pnpm run test
+
+# E2E tests
+pnpm run test:e2e
+
+# Test coverage
+pnpm run test:cov
+```
+
+## Tech Stack
+
+- **NestJS** - Progressive Node.js framework
+- **whatsapp-web.js** - WhatsApp Web client library
+- **Puppeteer** - Headless browser for WhatsApp Web
+- **TypeScript** - Type-safe development
 
 ## License
 
-Nest is [MIT licensed](LICENSE).
+UNLICENSED
