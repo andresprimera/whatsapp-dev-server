@@ -79,8 +79,14 @@ export class WhatsappService implements OnModuleInit {
 
         try {
           this.logger.log(`Sending webhook payload: ${JSON.stringify(payload, null, 2)}`);
-          await axios.post(this.webhookUrl, payload);
-          this.logger.log(`Message forwarded to webhook: ${this.webhookUrl}`);
+          const response = await axios.post(this.webhookUrl, payload, {
+            validateStatus: () => true, // Don't throw on non-2xx status codes
+          });
+          if (response.status >= 200 && response.status < 300) {
+            this.logger.log(`Message forwarded to webhook: ${this.webhookUrl}`);
+          } else {
+            this.logger.warn(`Webhook responded with status ${response.status}: ${this.webhookUrl}`);
+          }
         } catch (error) {
           this.logger.error(`Failed to forward message to webhook ${this.webhookUrl}`, error);
         }
